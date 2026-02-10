@@ -52,7 +52,6 @@
                 <button @click="addItem" class="w-10 h-10 bg-[#8e24aa] text-white rounded-xl flex items-center justify-center active:scale-90 transition shadow-lg shadow-purple-100"><i class="fas fa-plus"></i></button>
             </div>
         </div>
-        
         <div v-if="activeTab !== 'tool'" class="flex gap-3 overflow-x-auto no-scrollbar pb-1">
             <button v-for="(day, index) in tripData" :key="index" @click="currentDayIndex = index"
                 :class="['px-5 py-2 rounded-full whitespace-nowrap text-sm font-bold transition-all', currentDayIndex === index ? 'bg-[#8e24aa] text-white' : 'bg-white text-gray-400 border border-purple-100']">
@@ -129,7 +128,7 @@
                         <input v-model="exp.item" :placeholder="t.itemContent" class="flex-1 bg-transparent text-sm outline-none text-gray-700">
                         <div class="flex items-center gap-1">
                             <span class="text-[10px] text-purple-300">₩</span>
-                            <input v-model.number="exp.amount" type="number" class="w-20 bg-transparent font-black text-right outline-none text-[#8e24aa]" placeholder="0">
+                            <input v-model.number="exp.amount" type="number" class="w-16 bg-transparent font-black text-right outline-none text-[#8e24aa]" placeholder="0">
                         </div>
                         <button @click="deleteExpense(idx)" class="text-purple-100"><i class="fas fa-minus-circle"></i></button>
                     </div>
@@ -159,13 +158,15 @@
                     <i class="fas fa-arrow-right text-purple-100"></i>
                 </a>
                 
-                <a href="https://map.naver.com/" target="_blank" class="bg-white/90 p-6 rounded-[2.5rem] warm-card flex items-center justify-between border border-purple-50 active:scale-95 transition">
+                <a href="https://www.google.com/maps" target="_blank" class="bg-white/90 p-6 rounded-[2.5rem] warm-card flex items-center justify-between border border-purple-50 active:scale-95 transition">
                     <div class="flex items-center gap-5">
                         <div class="w-14 h-14 bg-green-50 text-green-500 rounded-2xl flex items-center justify-center text-2xl"><i class="fas fa-map-marked-alt"></i></div>
-                        <div><h4 class="font-bold text-gray-800 serif">NAVER Map</h4><p class="text-xs text-gray-400 mt-1">{{ t.mapDesc }}</p></div>
+                        <div><h4 class="font-bold text-gray-800 serif">Google Maps</h4><p class="text-xs text-gray-400 mt-1">{{ t.mapDesc }}</p></div>
                     </div>
                     <i class="fas fa-arrow-right text-purple-100"></i>
                 </a>
+                
+                <p class="text-center text-[10px] text-gray-400 font-bold mt-4 px-10">建議：在韓國使用 NAVER Map 或 KakaoMap 獲取最精準的步行與公車資訊。</p>
             </div>
         </div>
     </main>
@@ -197,22 +198,22 @@
             const i18n = {
                 zh: {
                     itinerary: '行程規劃', split: '財務支出', tool: '實用工具',
-                    totalTrip: '累積總預算', dayTheme: '設定本日主題...',
-                    navRoute: '開啟 NAVER Map 導航', inputLoc: '輸入景點...', note: '備註...',
+                    totalTrip: '旅行總支出', dayTheme: '設定本日主題...',
+                    navRoute: '導航本日路線 (Google)', inputLoc: '輸入景點...', note: '備註...',
                     taxRate: '稅率', krwTotal: '韓幣總額 (含稅)', afterTax: '退稅後金額',
                     savedTwd: '省下約 (TWD)', expense: '支出明細', itemContent: '項目內容...',
                     dayTotal: '本日小計', fxRate: '匯率 (KRW→TWD)', 
-                    deeplDesc: '支援中韓互譯，語氣最自然', mapDesc: '韓國旅遊必備在地地圖',
+                    deeplDesc: '支援中韓互譯，語氣最自然', mapDesc: '查詢大景點與儲存地點',
                     confirmDel: '要刪除這整天的行程與支出嗎？'
                 },
                 ko: {
                     itinerary: '일정표', split: '지출관리', tool: '편의도구',
                     totalTrip: '여행 총 지출', dayTheme: '오늘의 테마...',
-                    navRoute: '네이버 지도로 보기', inputLoc: '장소 입력...', note: '메모...',
+                    navRoute: '오늘의 경로 보기', inputLoc: '장소 입력...', note: '메모...',
                     taxRate: '세율', krwTotal: '총액 (세금포함)', afterTax: '세금 환급 후',
                     savedTwd: '절약 금액 (TWD)', expense: '지출 내역', itemContent: '항목 내용...',
                     dayTotal: '오늘의 합계', fxRate: '환율',
-                    deeplDesc: '가장 자연스러운 번역기', mapDesc: '한국 여행 필수 네이버 지도',
+                    deeplDesc: '가장 자연스러운 번역기', mapDesc: '장소 검색 및 길찾기',
                     confirmDel: '이 날의 일정을 삭제하시겠습니까?'
                 }
             };
@@ -223,22 +224,20 @@
                 return lang.value === 'zh' ? `Day ${num}` : `${num}일차`;
             };
 
-            // 讀取/初始化行程資料
-            const savedData = localStorage.getItem('korea_trip_pro_v2');
+            // 讀取存檔
+            const savedData = localStorage.getItem('korea_trip_pro_v1');
             const tripData = ref(savedData ? JSON.parse(savedData) : [
                 { dateLabel: "Day 1 - 抵達首爾", items: [{ time: "14:00", location: "仁川機場", note: "搭乘 AREX 進市區" }], expenses: [] }
             ]);
 
             const currentDay = computed(() => tripData.value[currentDayIndex.value]);
 
-            // 退稅計算
             const taxRefunded = computed(() => {
                 if (!taxInput.value) return { total: 0, saved: 0 };
                 const original = taxInput.value / (1 + (taxRate.value / 100));
                 return { total: Math.round(original), saved: Math.round(taxInput.value - original) };
             });
 
-            // 金額小計
             const dailyTotal = computed(() => {
                 return currentDay.value.expenses.reduce((sum, exp) => sum + (Number(exp.amount) || 0), 0);
             });
@@ -250,13 +249,11 @@
                 }, 0);
             });
 
-            // 切換語系
             const toggleLang = () => {
                 lang.value = lang.value === 'zh' ? 'ko' : 'zh';
                 localStorage.setItem('trip_lang_kr', lang.value);
             };
 
-            // 行程管理
             const addDay = () => {
                 tripData.value.push({ dateLabel: `Day ${tripData.value.length + 1}`, items: [], expenses: [] });
                 currentDayIndex.value = tripData.value.length - 1;
@@ -274,23 +271,20 @@
             const addExpense = () => currentDay.value.expenses.unshift({ item: "", amount: null });
             const deleteExpense = (idx) => currentDay.value.expenses.splice(idx, 1);
 
-            // 地圖功能 (NAVER Map)
             const openMap = (loc) => { 
                 if(!loc) return; 
-                window.open(`https://map.naver.com/v5/search/${encodeURIComponent(loc)}`, '_blank'); 
+                window.open(`https://www.google.com/maps/search/${encodeURIComponent(loc)}`, '_blank'); 
             };
 
             const openAllLocations = () => {
                 const locs = currentDay.value.items.map(i => i.location).filter(l => l !== "");
-                if (locs.length < 1) {
-                    window.open('https://map.naver.com/', '_blank');
-                    return;
-                }
-                // 跳轉至當天第一個景點的搜尋結果
-                window.open(`https://map.naver.com/v5/search/${encodeURIComponent(locs[0])}`, '_blank');
+                if (locs.length < 1) return;
+                const origin = encodeURIComponent(locs[0]);
+                const destination = encodeURIComponent(locs[locs.length - 1]);
+                const waypoints = locs.slice(1, -1).map(l => encodeURIComponent(l)).join('|');
+                window.open(`https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypoints}&travelmode=transit`, '_blank');
             };
 
-            // 背景動畫
             const generateLeafStyle = () => ({
                 left: Math.random() * 100 + 'vw',
                 animationDuration: 6 + Math.random() * 8 + 's',
@@ -299,8 +293,7 @@
                 height: 10 + Math.random() * 12 + 'px'
             });
 
-            // 自動存檔
-            watch(tripData, (val) => localStorage.setItem('korea_trip_pro_v2', JSON.stringify(val)), { deep: true });
+            watch(tripData, (val) => localStorage.setItem('korea_trip_pro_v1', JSON.stringify(val)), { deep: true });
 
             return {
                 lang, t, toggleLang, formatDayLabel, activeTab, currentDayIndex, tripData, currentDay,
