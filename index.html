@@ -68,7 +68,7 @@
             </div>
             
             <button @click="openAllLocations" class="w-full bg-white border border-purple-100 py-4 rounded-3xl warm-card flex items-center justify-center gap-3 active:scale-95 transition text-[#8e24aa] font-bold mb-8">
-                <i class="fas fa-map-marked-alt"></i> {{ t.navRoute }}
+                <i class="fas fa-map-marker-alt"></i> {{ t.navRoute }}
             </button>
 
             <div class="space-y-6">
@@ -82,8 +82,8 @@
                                 <input v-model="item.note" :placeholder="t.note" class="block w-full text-xs text-gray-400 bg-transparent focus:outline-none mt-2">
                             </div>
                             <div class="flex flex-col gap-4 ml-2">
-                                <button @click="openMap(item.location)" class="text-purple-300 active:scale-90 transition"><i class="fas fa-location-arrow"></i></button>
-                                <button @click="deleteItem(index)" class="text-purple-100 active:scale-90 transition"><i class="fas fa-times"></i></button>
+                                <button @click="openMap(item.location)" class="text-purple-300"><i class="fas fa-location-arrow"></i></button>
+                                <button @click="deleteItem(index)" class="text-purple-100"><i class="fas fa-times"></i></button>
                             </div>
                         </div>
                     </div>
@@ -167,10 +167,7 @@
                     </div>
                     <i class="fas fa-arrow-right text-purple-100"></i>
                 </a>
-                
-                <p class="text-center text-[10px] text-gray-400 font-bold mt-4 px-10">
-                    提示：韓國境內 Google Maps 僅提供「大眾運輸」導航。若需步行精確導航，建議複製地點至 NAVER Map 使用。
-                </p>
+                <p class="text-center text-[10px] text-gray-400 font-bold mt-4 px-10">建議：在韓國使用 NAVER Map 獲取最精準的步行資訊。</p>
             </div>
         </div>
     </main>
@@ -195,7 +192,7 @@
             const lang = ref(localStorage.getItem('trip_lang_kr') || 'zh');
             const activeTab = ref('itinerary');
             const currentDayIndex = ref(0);
-            const fxRate = ref(0.024); 
+            const fxRate = ref(0.024);
             const taxRate = ref(10);
             const taxInput = ref(null);
 
@@ -203,21 +200,21 @@
                 zh: {
                     itinerary: '行程規劃', split: '財務支出', tool: '實用工具',
                     totalTrip: '旅行總支出', dayTheme: '設定本日主題...',
-                    navRoute: '導航本日路線 (Google)', inputLoc: '輸入景點...', note: '備註...',
+                    navRoute: '查看今日所有景點', inputLoc: '輸入景點...', note: '備註...',
                     taxRate: '稅率', krwTotal: '韓幣總額 (含稅)', afterTax: '退稅後金額',
                     savedTwd: '省下約 (TWD)', expense: '支出明細', itemContent: '項目內容...',
                     dayTotal: '本日小計', fxRate: '匯率 (KRW→TWD)', 
-                    deeplDesc: '支援中韓互譯，語氣最自然', mapDesc: '搜尋與大眾運輸導航',
+                    deeplDesc: '支援中韓互譯，語氣最自然', mapDesc: '搜尋景點與地點標記',
                     confirmDel: '要刪除這整天的行程與支出嗎？'
                 },
                 ko: {
                     itinerary: '일정표', split: '지출관리', tool: '편의도구',
                     totalTrip: '여행 총 지출', dayTheme: '오늘의 테마...',
-                    navRoute: '오늘의 경로 보기', inputLoc: '장소 입력...', note: '메모...',
+                    navRoute: '오늘의 모든 장소 보기', inputLoc: '장소 입력...', note: '메모...',
                     taxRate: '세율', krwTotal: '총액 (세금포함)', afterTax: '세금 환급 후',
                     savedTwd: '절약 금액 (TWD)', expense: '지출 내역', itemContent: '항목 내용...',
                     dayTotal: '오늘의 합계', fxRate: '환율',
-                    deeplDesc: '가장 자연스러운 번역기', mapDesc: '장소 검색 및 길찾기',
+                    deeplDesc: '가장 자연스러운 번역기', mapDesc: '장소 검색 및 마크',
                     confirmDel: '이 날의 일정을 삭제하시겠습니까?'
                 }
             };
@@ -263,35 +260,26 @@
             const addExpense = () => currentDay.value.expenses.unshift({ item: "", amount: null });
             const deleteExpense = (idx) => currentDay.value.expenses.splice(idx, 1);
 
-            // 單點導航：強制鎖定韓國
+            // 單點搜尋：確保在韓國
             const openMap = (loc) => { 
                 if(!loc) return; 
                 const query = encodeURIComponent(`${loc}, South Korea`);
-                window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank'); 
+                window.open(`https://www.google.com/maps/search/${query}`, '_blank'); 
             };
 
-            // 路線導航：串接當日所有地點
+            // 多點搜尋：串接今日所有景點在同一個搜尋結果中
             const openAllLocations = () => {
                 const locs = currentDay.value.items
                     .map(i => i.location)
                     .filter(l => l && l.trim() !== "");
                 
                 if (locs.length < 1) return;
-                if (locs.length === 1) return openMap(locs[0]);
 
-                const origin = encodeURIComponent(`${locs[0]}, South Korea`);
-                const destination = encodeURIComponent(`${locs[locs.length - 1]}, South Korea`);
+                // 將地點用 "/" 分隔串接，Google 會在地圖上嘗試搜尋多個標記
+                const combinedQuery = locs.map(l => `${l}, South Korea`).join(' / ');
+                const finalQuery = encodeURIComponent(combinedQuery);
                 
-                // 處理中間點，Google Maps API 規定用 | 分隔
-                const waypoints = locs.slice(1, -1)
-                    .map(l => encodeURIComponent(`${l}, South Korea`))
-                    .join('|');
-
-                // 使用 Google Maps 官方 Directions 連結格式
-                let url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=transit`;
-                if (waypoints) url += `&waypoints=${waypoints}`;
-                
-                window.open(url, '_blank');
+                window.open(`https://www.google.com/maps/search/${finalQuery}`, '_blank');
             };
 
             const generateLeafStyle = () => ({
